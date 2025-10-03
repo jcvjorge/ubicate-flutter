@@ -43,7 +43,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyB6SrHvGnKH7Vi9Wlp82TVZ7xGkJvdoy7o',
-    appId: '1:1068560645570:android:e50e65a40870a000312a5b',
+    appId: '1:1068560645570:android:b60cd679dbb29a94312a5b',
     messagingSenderId: '1068560645570',
     projectId: 'ubicate-4271d',
     databaseURL: 'https://ubicate-4271d-default-rtdb.firebaseio.com',
@@ -52,7 +52,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyDGHfZWWwXA_UD8B8-eYOVdxSYMr4qBTp0',
-    appId: '1:1068560645570:ios:13c1a70abb412f1d312a5b',
+    appId: '1:1068560645570:ios:744f61a488728e2d312a5b',
     messagingSenderId: '1068560645570',
     projectId: 'ubicate-4271d',
     databaseURL: 'https://ubicate-4271d-default-rtdb.firebaseio.com',
@@ -62,7 +62,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyCgQdE_E_PkfumQ9__kTNGkzJ2r3aET6Ts',
-    appId: '1:1068560645570:web:59dc7b3f9c7a30ad312a5b',
+    appId: '1:1068560645570:web:2a91b9da8e270d20312a5b',
     messagingSenderId: '1068560645570',
     projectId: 'ubicate-4271d',
     authDomain: 'ubicate-4271d.firebaseapp.com',
@@ -72,7 +72,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyDGHfZWWwXA_UD8B8-eYOVdxSYMr4qBTp0',
-    appId: '1:1068560645570:ios:13c1a70abb412f1d312a5b',
+    appId: '1:1068560645570:ios:744f61a488728e2d312a5b',
     messagingSenderId: '1068560645570',
     projectId: 'ubicate-4271d',
     databaseURL: 'https://ubicate-4271d-default-rtdb.firebaseio.com',
@@ -82,7 +82,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions windows = FirebaseOptions(
     apiKey: 'AIzaSyCgQdE_E_PkfumQ9__kTNGkzJ2r3aET6Ts',
-    appId: '1:1068560645570:web:7e8b58d396d8390e312a5b',
+    appId: '1:1068560645570:web:51507674b933980d312a5b',
     messagingSenderId: '1068560645570',
     projectId: 'ubicate-4271d',
     authDomain: 'ubicate-4271d.firebaseapp.com',
