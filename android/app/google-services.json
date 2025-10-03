@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "1068560645570",
+    "firebase_url": "https://ubicate-4271d-default-rtdb.firebaseio.com",
+    "project_id": "ubicate-4271d",
+    "storage_bucket": "ubicate-4271d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1068560645570:android:e50e65a40870a000312a5b",
+        "android_client_info": {
+          "package_name": "com.example.ubicate"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB6SrHvGnKH7Vi9Wlp82TVZ7xGkJvdoy7o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1068560645570:android:cda4c660dbfc49c5312a5b",
+        "android_client_info": {
+          "package_name": "com.ubicate.app_ubicate"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB6SrHvGnKH7Vi9Wlp82TVZ7xGkJvdoy7o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

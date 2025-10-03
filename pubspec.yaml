@@ -1,0 +1,50 @@
+name: ubicate
+description: "App de geolocalización de buses en tiempo real"
+publish_to: "none"
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # UI
+  cupertino_icons: ^1.0.8
+
+  # Estado - Provider para manejar autenticación y estado global
+  provider: ^6.1.2
+
+  # HTTP y API - Para consumir tu backend Spring Boot
+  http: ^1.2.1
+  dio: ^5.4.3
+
+  # Almacenamiento local
+  shared_preferences: ^2.2.3
+  flutter_secure_storage: ^9.2.2
+
+  # Mapas y Geolocalización
+  google_maps_flutter: ^2.6.1
+  geolocator: ^12.0.0
+  permission_handler: ^11.3.1
+
+  # Firebase - NUEVO: Para tracking GPS en tiempo real
+  firebase_core: ^2.24.2
+  firebase_database: ^10.4.0
+  firebase_auth: ^4.16.0
+
+  # WebSockets - Opcional (Firebase lo reemplaza)
+  socket_io_client: ^2.0.3+1
+
+  # Utilidades
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
