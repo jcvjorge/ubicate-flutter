@@ -1,27 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../data/models/user_model.dart';
 import '../../data/services/auth_service.dart';
 import '../../data/services/storage_service.dart';
-import '../../data/services/firebase_tracking_service.dart'; // ← NUEVO IMPORT
+import '../../data/services/firebase_tracking_service.dart';
 
 enum AuthStatus { initial, authenticated, unauthenticated, loading }
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
   final StorageService _storageService = StorageService();
-  final FirebaseTrackingService _firebaseService = FirebaseTrackingService(); // ← NUEVO
+  final FirebaseTrackingService _firebaseService = FirebaseTrackingService();
 
   AuthStatus _status = AuthStatus.initial;
   UserModel? _currentUser;
   String? _errorMessage;
-  bool _firebaseConnected = false; // ← NUEVO
+  bool _firebaseConnected = false;
 
   AuthStatus get status => _status;
   UserModel? get currentUser => _currentUser;
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _status == AuthStatus.authenticated;
   bool get isLoading => _status == AuthStatus.loading;
-  bool get firebaseConnected => _firebaseConnected; // ← NUEVO
+  bool get firebaseConnected => _firebaseConnected;
 
   Future<void> checkAuthStatus() async {
     try {
@@ -32,8 +33,8 @@ class AuthProvider with ChangeNotifier {
         if (user != null) {
           _currentUser = user;
           _status = AuthStatus.authenticated;
-          
-          // 🔥 NUEVO: Si es chofer, conectar a Firebase
+
+          // ✅ CORREGIDO: Si es chofer, usar autenticación anónima de Firebase
           if (user.isChofer) {
             await _connectToFirebase();
           }
@@ -61,16 +62,10 @@ class AuthProvider with ChangeNotifier {
       await _storageService.saveToken(authResponse.token);
       await _storageService.saveUser(authResponse.user);
 
-      // 🔥 NUEVO: Guardar firebase token si viene (para choferes)
-      if (authResponse.firebaseToken != null) {
-        await _storageService.saveFirebaseToken(authResponse.firebaseToken!);
-        print('🔥 Firebase token guardado: ${authResponse.firebaseToken!.substring(0, 20)}...');
-      }
-
       _currentUser = authResponse.user;
       _status = AuthStatus.authenticated;
 
-      // 🔥 NUEVO: Si es chofer, conectar a Firebase
+      // ✅ CORREGIDO: Si es chofer, conectar a Firebase sin custom tokens
       if (authResponse.user.isChofer) {
         await _connectToFirebase();
       }
@@ -85,22 +80,21 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // 🔥 NUEVO: Conectar a Firebase
+  // ✅ CORREGIDO: Método de conexión Firebase simplificado
   Future<void> _connectToFirebase() async {
     try {
-      final firebaseToken = await _storageService.getFirebaseToken();
-      
-      if (firebaseToken != null) {
-        await _firebaseService.authenticateWithCustomToken(firebaseToken);
-        _firebaseConnected = true;
-        print('✅ Chofer conectado a Firebase correctamente');
+      // Usar autenticación anónima de Firebase (funciona siempre)
+      if (FirebaseAuth.instance.currentUser == null) {
+        await FirebaseAuth.instance.signInAnonymously();
+        print('✅ Chofer conectado a Firebase (modo anónimo)');
       } else {
-        print('⚠️ No hay token de Firebase para el chofer');
-        _firebaseConnected = false;
+        print('✅ Chofer ya conectado a Firebase');
       }
+
+      _firebaseConnected = true;
       notifyListeners();
     } catch (e) {
-      print('❌ Error conectando chofer a Firebase: $e');
+      print('❌ Error conectando a Firebase: $e');
       _firebaseConnected = false;
       notifyListeners();
     }
@@ -108,10 +102,11 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> logout() async {
     try {
-      // 🔥 NUEVO: Desconectar de Firebase si está conectado
-      if (_firebaseConnected) {
-        await _firebaseService.signOut();
+      // ✅ CORREGIDO: Cerrar sesión Firebase correctamente
+      if (_firebaseConnected && FirebaseAuth.instance.currentUser != null) {
+        await FirebaseAuth.instance.signOut();
         _firebaseConnected = false;
+        print('✅ Sesión Firebase cerrada');
       }
 
       await _storageService.clearSession();
@@ -159,6 +154,5 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // 🔥 NUEVO: Getter para Firebase service (para usar en driver_map_screen)
   FirebaseTrackingService get firebaseService => _firebaseService;
 }

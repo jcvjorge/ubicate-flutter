@@ -1,5 +1,4 @@
 // lib/data/models/user_model.dart
-
 import '../../core/enums/user_role.dart';
 
 class UserModel {
@@ -32,13 +31,13 @@ class UserModel {
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       id: json['id'].toString(),
-      email: json['correo'] ?? json['email'] ?? '',
+      email: json['correo'] ?? '',
       nombre: json['nombre'] ?? '',
       apellido: json['apellido'] ?? '',
       role: UserRole.fromString(json['role'] ?? 'USER'),
       telefono: json['telefono'],
       dni: json['dni'],
-      empresaId: json['empresa_id']?.toString(),
+      empresaId: json['empresaId']?.toString(),
       busId: json['busId']?.toString(),
       busNumber: json['busNumber'],
       busPlate: json['busPlate'],
@@ -54,7 +53,7 @@ class UserModel {
       'role': role.name.toUpperCase(),
       'telefono': telefono,
       'dni': dni,
-      'empresa_id': empresaId,
+      'empresaId': empresaId,
       'busId': busId,
       'busNumber': busNumber,
       'busPlate': busPlate,

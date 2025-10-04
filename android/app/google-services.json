@@ -1,14 +1,14 @@
 {
   "project_info": {
-    "project_number": "1068560645570",
-    "firebase_url": "https://ubicate-4271d-default-rtdb.firebaseio.com",
-    "project_id": "ubicate-4271d",
-    "storage_bucket": "ubicate-4271d.firebasestorage.app"
+    "project_number": "858346889549",
+    "firebase_url": "https://flutter-firebase-e2cf0-default-rtdb.firebaseio.com",
+    "project_id": "flutter-firebase-e2cf0",
+    "storage_bucket": "flutter-firebase-e2cf0.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1068560645570:android:b60cd679dbb29a94312a5b",
+        "mobilesdk_app_id": "1:858346889549:android:242c3b2f6e023acd7e1704",
         "android_client_info": {
           "package_name": "com.example.ubicate"
         }
@@ -16,7 +16,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyB6SrHvGnKH7Vi9Wlp82TVZ7xGkJvdoy7o"
+          "current_key": "AIzaSyB47W-LyJSIlcdFXDDU5QOQp69haOP9XQo"
         }
       ],
       "services": {

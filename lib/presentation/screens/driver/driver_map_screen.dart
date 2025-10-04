@@ -18,25 +18,89 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   bool _isTracking = false;
   Timer? _locationTimer;
   StreamSubscription<Position>? _positionStream;
+  bool _isDisposed = false;
+  bool _hasInitialized = false;
 
   static const LatLng _limaCenter = LatLng(-12.0464, -77.0428);
+  static Position? _lastKnownPosition;
 
   @override
   void initState() {
     super.initState();
-    _initializeLocation();
+    _quickInitialize();
+  }
+
+  void _quickInitialize() {
+    if (_lastKnownPosition != null) {
+      setState(() {
+        _currentPosition = _lastKnownPosition;
+        _hasInitialized = true;
+      });
+      _updateLocationInBackground();
+    } else {
+      _initializeLocation();
+    }
+  }
+
+  Future<void> _updateLocationInBackground() async {
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.medium,
+      );
+      if (!_isDisposed && mounted) {
+        setState(() => _currentPosition = position);
+        _lastKnownPosition = position;
+        _moveCameraToPosition(position);
+      }
+    } catch (e) {
+      debugPrint('Error actualizando ubicación: $e');
+    }
   }
 
   @override
   void dispose() {
+    _isDisposed = true;
     _stopTracking();
     _mapController?.dispose();
     super.dispose();
   }
 
   Future<void> _initializeLocation() async {
+    if (_isDisposed) return;
+
     await _requestPermissions();
-    await _getCurrentLocation();
+
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      if (!_isDisposed && mounted) {
+        setState(() {
+          _currentPosition = position;
+          _hasInitialized = true;
+        });
+        _lastKnownPosition = position;
+        _moveCameraToPosition(position);
+      }
+    } catch (e) {
+      if (!_isDisposed && mounted) {
+        setState(() {
+          _currentPosition = Position(
+            latitude: _limaCenter.latitude,
+            longitude: _limaCenter.longitude,
+            timestamp: DateTime.now(),
+            accuracy: 0,
+            altitude: 0,
+            altitudeAccuracy: 0,
+            heading: 0,
+            headingAccuracy: 0,
+            speed: 0,
+            speedAccuracy: 0,
+          );
+          _hasInitialized = true;
+        });
+      }
+    }
   }
 
   Future<void> _requestPermissions() async {
@@ -44,30 +108,10 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }
-    if (permission == LocationPermission.deniedForever) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Permisos de ubicación denegados permanentemente'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  Future<void> _getCurrentLocation() async {
-    try {
-      final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-      setState(() => _currentPosition = position);
-      _moveCameraToPosition(position);
-    } catch (e) {
-      print('Error obteniendo ubicación: $e');
-    }
   }
 
   void _moveCameraToPosition(Position position) {
+    if (_isDisposed || _mapController == null) return;
     _mapController?.animateCamera(
       CameraUpdate.newCameraPosition(
         CameraPosition(
@@ -79,139 +123,86 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
   }
 
   void _startTracking() {
+    if (_isDisposed || !mounted) return;
+
     final authProvider = context.read<AuthProvider>();
-    
-    // 🔥 VERIFICAR CONEXIÓN FIREBASE
+
     if (!authProvider.firebaseConnected) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'No se puede transmitir: Firebase no está conectado',
-          ),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    // 🔥 VERIFICAR DATOS DEL USUARIO
-    final user = authProvider.currentUser;
-    if (user?.empresaId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'No se puede transmitir: Sin empresa asignada',
-          ),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    if (user?.busId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'No se puede transmitir: Sin bus asignado',
-          ),
-          backgroundColor: Colors.red,
-        ),
-      );
+      _showSnackBar('Firebase no conectado', Colors.red);
       return;
     }
 
     setState(() => _isTracking = true);
 
-    // 🔥 ESCUCHAR CAMBIOS DE UBICACIÓN
     _positionStream = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 10, // Solo actualizar si se mueve 10 metros
+        distanceFilter: 10,
       ),
     ).listen((position) {
-      setState(() => _currentPosition = position);
-      _moveCameraToPosition(position);
+      if (!_isDisposed && mounted) {
+        setState(() => _currentPosition = position);
+        _lastKnownPosition = position;
+        _moveCameraToPosition(position);
+      }
     });
 
-    // 🔥 ENVIAR UBICACIÓN CADA 5 SEGUNDOS
     _locationTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      if (_currentPosition != null) {
+      if (!_isDisposed && _currentPosition != null) {
         _sendLocationToFirebase();
       }
     });
 
+    _showSnackBar('Transmisión iniciada', Colors.green);
+  }
+
+  void _stopTracking() {
+    if (_isDisposed) return;
+
+    if (mounted) {
+      setState(() => _isTracking = false);
+    }
+
+    _positionStream?.cancel();
+    _positionStream = null;
+    _locationTimer?.cancel();
+    _locationTimer = null;
+
+    if (mounted && !_isDisposed) {
+      _showSnackBar('Transmisión detenida', Colors.orange);
+    }
+  }
+
+  void _showSnackBar(String message, Color color) {
+    if (_isDisposed || !mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.radio_button_checked, color: Colors.white),
-            SizedBox(width: 8),
-            Text('📡 Transmisión iniciada a Firebase'),
-          ],
-        ),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 2),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        duration: const Duration(seconds: 2),
       ),
     );
   }
 
-  void _stopTracking() {
-    setState(() => _isTracking = false);
-    _positionStream?.cancel();
-    _locationTimer?.cancel();
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.radio_button_unchecked, color: Colors.white),
-              SizedBox(width: 8),
-              Text('📡 Transmisión detenida'),
-            ],
-          ),
-          backgroundColor: Colors.orange,
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
-  // 🔥 ENVIAR UBICACIÓN A FIREBASE
   Future<void> _sendLocationToFirebase() async {
-    if (_currentPosition == null) return;
+    if (_isDisposed || _currentPosition == null || !mounted) return;
 
     final authProvider = context.read<AuthProvider>();
     final user = authProvider.currentUser;
-    
-    if (user?.empresaId == null || user?.busId == null) {
-      print('⚠️ Usuario sin empresaId o busId');
-      return;
-    }
+
+    if (user?.empresaId == null) return;
 
     try {
       await authProvider.firebaseService.updateBusLocation(
         empresaId: user!.empresaId!,
-        busId: user.busId!,
+        busId: user.busId ?? 'default-bus',
         latitud: _currentPosition!.latitude,
         longitud: _currentPosition!.longitude,
-        velocidad: _currentPosition!.speed * 3.6, // m/s a km/h
+        velocidad: _currentPosition!.speed * 3.6,
       );
-      
-      print('✅ Ubicación enviada: ${_currentPosition!.latitude}, ${_currentPosition!.longitude}');
     } catch (e) {
-      print('❌ Error enviando ubicación a Firebase: $e');
-      
-      // Mostrar error al usuario
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error enviando ubicación: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
+      debugPrint('Error enviando ubicación: $e');
     }
   }
 
@@ -220,35 +211,59 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, _) {
         final user = authProvider.currentUser;
-        
+
         return Scaffold(
           body: Stack(
             children: [
-              // 🗺️ MAPA
-              _currentPosition == null
-                  ? const Center(child: CircularProgressIndicator())
-                  : GoogleMap(
-                      initialCameraPosition: CameraPosition(
-                        target: LatLng(
-                          _currentPosition!.latitude,
-                          _currentPosition!.longitude,
+              if (!_hasInitialized)
+                Container(
+                  color: Colors.grey[100],
+                  child: const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.map, size: 64, color: Colors.grey),
+                        SizedBox(height: 16),
+                        Text(
+                          'Preparando mapa...',
+                          style: TextStyle(color: Colors.grey),
                         ),
-                        zoom: 16,
-                      ),
-                      myLocationEnabled: true,
-                      myLocationButtonEnabled: false,
-                      zoomControlsEnabled: false,
-                      onMapCreated: (controller) => _mapController = controller,
+                      ],
                     ),
+                  ),
+                )
+              else
+                GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: LatLng(
+                      _currentPosition!.latitude,
+                      _currentPosition!.longitude,
+                    ),
+                    zoom: 16,
+                  ),
+                  myLocationEnabled: true,
+                  myLocationButtonEnabled: false,
+                  zoomControlsEnabled: false,
+                  mapToolbarEnabled: false,
+                  compassEnabled: true,
+                  onMapCreated: (controller) {
+                    if (!_isDisposed) {
+                      _mapController = controller;
+                    }
+                  },
+                ),
 
-              // 📊 TOP BAR CON INFORMACIÓN
               Positioned(
                 top: 0,
                 left: 0,
                 right: 0,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.white, Colors.white.withOpacity(0.8)],
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.1),
@@ -262,106 +277,142 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                     16,
                     16,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          IconButton(
-                            onPressed: () => Navigator.pop(context),
-                            icon: const Icon(Icons.arrow_back),
-                          ),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                      IconButton(
+                        onPressed: () {
+                          if (!_isDisposed && mounted) {
+                            Navigator.pop(context);
+                          }
+                        },
+                        icon: const Icon(Icons.arrow_back),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          elevation: 2,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Bus ${user?.busPlate ?? user?.busNumber ?? "N/A"}',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Row(
                               children: [
-                                Text(
-                                  'Bus ${user?.busPlate ?? user?.busNumber ?? "N/A"}',
-                                  style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color:
+                                        _isTracking
+                                            ? Colors.green
+                                            : Colors.grey,
                                   ),
                                 ),
-                                Row(
-                                  children: [
-                                    // 🔥 INDICADOR DE ESTADO
-                                    Icon(
-                                      _isTracking
-                                          ? Icons.radio_button_checked
-                                          : Icons.radio_button_unchecked,
-                                      color: _isTracking ? Colors.green : Colors.grey,
-                                      size: 16,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      _isTracking
-                                          ? '📡 Transmitiendo a Firebase'
-                                          : '⏸️ Detenido',
-                                      style: TextStyle(
-                                        color: _isTracking ? Colors.green : Colors.grey,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                // 🔥 INDICADOR DE FIREBASE
-                                Row(
-                                  children: [
-                                    Icon(
-                                      authProvider.firebaseConnected
-                                          ? Icons.cloud_done
-                                          : Icons.cloud_off,
-                                      color: authProvider.firebaseConnected 
-                                          ? Colors.blue : Colors.red,
-                                      size: 16,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      authProvider.firebaseConnected
-                                          ? '☁️ Firebase conectado'
-                                          : '☁️ Firebase desconectado',
-                                      style: TextStyle(
-                                        color: authProvider.firebaseConnected 
-                                            ? Colors.blue : Colors.red,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
+                                const SizedBox(width: 8),
+                                Text(
+                                  _isTracking ? 'En línea' : 'Fuera de línea',
+                                  style: TextStyle(
+                                    color:
+                                        _isTracking
+                                            ? Colors.green
+                                            : Colors.grey,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ],
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              authProvider.firebaseConnected
+                                  ? Colors.green
+                                  : Colors.red,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              authProvider.firebaseConnected
+                                  ? Icons.wifi
+                                  : Icons.wifi_off,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              authProvider.firebaseConnected ? 'OK' : 'OFF',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
 
-              // 🎮 BOTÓN DE CONTROL
               Positioned(
                 bottom: 32,
                 left: 16,
                 right: 16,
-                child: ElevatedButton.icon(
-                  onPressed: _isTracking ? _stopTracking : _startTracking,
-                  icon: Icon(_isTracking ? Icons.stop : Icons.play_arrow),
-                  label: Text(
-                    _isTracking ? 'Detener Transmisión' : 'Iniciar Transmisión',
-                  ),
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (!_isDisposed && mounted) {
+                      _isTracking ? _stopTracking() : _startTracking();
+                    }
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _isTracking ? Colors.red : Colors.green,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     minimumSize: const Size(double.infinity, 56),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(28),
                     ),
+                    elevation: 4,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _isTracking
+                            ? Icons.stop_circle
+                            : Icons.play_circle_fill,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _isTracking ? 'Detener' : 'Iniciar',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
 
-              // 🧭 BOTÓN DE CENTRAR
               Positioned(
                 right: 16,
                 bottom: 100,
@@ -369,8 +420,9 @@ class _DriverMapScreenState extends State<DriverMapScreen> {
                   heroTag: 'center',
                   mini: true,
                   backgroundColor: Colors.white,
+                  elevation: 4,
                   onPressed: () {
-                    if (_currentPosition != null) {
+                    if (!_isDisposed && _currentPosition != null) {
                       _moveCameraToPosition(_currentPosition!);
                     }
                   },
