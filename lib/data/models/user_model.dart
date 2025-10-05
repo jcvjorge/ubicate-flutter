@@ -31,16 +31,17 @@ class UserModel {
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       id: json['id'].toString(),
-      email: json['correo'] ?? '',
+      email: json['correo'] ?? json['email'] ?? '',
       nombre: json['nombre'] ?? '',
       apellido: json['apellido'] ?? '',
       role: UserRole.fromString(json['role'] ?? 'USER'),
       telefono: json['telefono'],
       dni: json['dni'],
-      empresaId: json['empresaId']?.toString(),
-      busId: json['busId']?.toString(),
-      busNumber: json['busNumber'],
-      busPlate: json['busPlate'],
+      empresaId:
+          json['empresa_id']?.toString() ?? json['empresaId']?.toString(),
+      busId: json['bus_id']?.toString() ?? json['busId']?.toString(),
+      busNumber: json['bus_number'] ?? json['busNumber'],
+      busPlate: json['bus_plate'] ?? json['busPlate'],
     );
   }
 
@@ -53,10 +54,10 @@ class UserModel {
       'role': role.name.toUpperCase(),
       'telefono': telefono,
       'dni': dni,
-      'empresaId': empresaId,
-      'busId': busId,
-      'busNumber': busNumber,
-      'busPlate': busPlate,
+      'empresa_id': empresaId,
+      'bus_id': busId,
+      'bus_number': busNumber,
+      'bus_plate': busPlate,
     };
   }
 

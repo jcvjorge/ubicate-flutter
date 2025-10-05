@@ -1,7 +1,7 @@
 // lib/config/constants/api_constants.dart
 
 class ApiConstants {
-  static const String baseUrl = 'http://10.0.2.2:8080/api';
+  static const String baseUrl = 'https://jcvjorge-transport-api-4b70ae842c45.herokuapp.com/api';
 
   // Auth
   static const String login = '/auth/login';

@@ -27,11 +27,18 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     final user = authProvider.currentUser;
 
     if (user?.empresaId != null) {
-      await Future.delayed(const Duration(seconds: 4));
+      await Future.delayed(const Duration(seconds: 2));
 
       if (!mounted || _hasAutoNavigated) return;
 
-      if (authProvider.firebaseConnected) {
+      int attempts = 0;
+      while (!authProvider.firebaseConnected && attempts < 10) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        attempts++;
+        if (!mounted) return;
+      }
+
+      if (authProvider.firebaseConnected || attempts >= 10) {
         _hasAutoNavigated = true;
         Navigator.pushNamed(context, '/driver-map');
       }
@@ -110,7 +117,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                             const CircularProgressIndicator(),
                             const SizedBox(height: 16),
                             const Text(
-                              'Iniciando automáticamente...',
+                              'Iniciando mapa...',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -200,14 +207,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
                             Icons.directions_bus,
                             'Unidad',
                             user?.busPlate ?? 'No asignada',
-                            isOptional: true,
-                          ),
-                          const Divider(),
-                          _buildInfoRow(
-                            Icons.confirmation_number,
-                            'Bus ID',
-                            user?.busId ?? 'No asignado',
-                            isOptional: true,
+                            isOptional: false,
                           ),
                           if (user?.telefono != null) ...[
                             const Divider(),
@@ -310,9 +310,9 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
     bool hasNavigated,
   ) {
     if (!hasCompany) return 'Necesitas empresa asignada para continuar';
-    if (!firebaseReady) return 'Estableciendo conexión con el servidor';
-    if (hasNavigated) return 'Redirigiendo al mapa...';
-    return 'Listo para iniciar recorrido automáticamente';
+    if (!firebaseReady) return 'Conectando con sistema de ubicación...';
+    if (hasNavigated) return 'Cargando mapa de conducción...';
+    return 'Listo para iniciar recorrido';
   }
 
   String _getButtonText(
@@ -322,8 +322,8 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> {
   ) {
     if (!hasCompany) return 'Sin Empresa';
     if (!firebaseReady) return 'Conectando...';
-    if (hasNavigated) return 'Iniciando...';
-    return 'Ir al Mapa (Manual)';
+    if (hasNavigated) return 'Cargando...';
+    return 'Ir al Mapa';
   }
 
   Widget _buildInfoRow(

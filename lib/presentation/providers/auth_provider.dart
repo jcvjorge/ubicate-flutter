@@ -16,6 +16,7 @@ class AuthProvider with ChangeNotifier {
   UserModel? _currentUser;
   String? _errorMessage;
   bool _firebaseConnected = false;
+  String? _token;
 
   AuthStatus get status => _status;
   UserModel? get currentUser => _currentUser;
@@ -34,7 +35,6 @@ class AuthProvider with ChangeNotifier {
           _currentUser = user;
           _status = AuthStatus.authenticated;
 
-          // ✅ CORREGIDO: Si es chofer, usar autenticación anónima de Firebase
           if (user.isChofer) {
             await _connectToFirebase();
           }
@@ -58,16 +58,16 @@ class AuthProvider with ChangeNotifier {
 
     try {
       final authResponse = await _authService.login(email, password);
+      _token = authResponse.token;
+      _currentUser = authResponse.user;
 
       await _storageService.saveToken(authResponse.token);
       await _storageService.saveUser(authResponse.user);
 
-      _currentUser = authResponse.user;
       _status = AuthStatus.authenticated;
 
-      // ✅ CORREGIDO: Si es chofer, conectar a Firebase sin custom tokens
-      if (authResponse.user.isChofer) {
-        await _connectToFirebase();
+      if (authResponse.user.isChofer && authResponse.firebaseToken != null) {
+        await _connectToFirebaseWithCustomToken(authResponse.firebaseToken!);
       }
 
       notifyListeners();
@@ -80,10 +80,32 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
-  // ✅ CORREGIDO: Método de conexión Firebase simplificado
+  Future<void> _connectToFirebaseWithCustomToken(String customToken) async {
+    try {
+      print('🔥 Conectando a Firebase con token personalizado del backend...');
+
+      await FirebaseAuth.instance.signInWithCustomToken(customToken);
+
+      print('✅ Conectado a Firebase exitosamente');
+      _firebaseConnected = true;
+      notifyListeners();
+    } catch (e) {
+      print('❌ Error conectando a Firebase con token personalizado: $e');
+
+      try {
+        await FirebaseAuth.instance.signInAnonymously();
+        print('✅ Conectado a Firebase (modo anónimo como fallback)');
+        _firebaseConnected = true;
+      } catch (fallbackError) {
+        print('❌ Error total en Firebase: $fallbackError');
+        _firebaseConnected = false;
+      }
+      notifyListeners();
+    }
+  }
+
   Future<void> _connectToFirebase() async {
     try {
-      // Usar autenticación anónima de Firebase (funciona siempre)
       if (FirebaseAuth.instance.currentUser == null) {
         await FirebaseAuth.instance.signInAnonymously();
         print('✅ Chofer conectado a Firebase (modo anónimo)');
@@ -102,7 +124,6 @@ class AuthProvider with ChangeNotifier {
 
   Future<void> logout() async {
     try {
-      // ✅ CORREGIDO: Cerrar sesión Firebase correctamente
       if (_firebaseConnected && FirebaseAuth.instance.currentUser != null) {
         await FirebaseAuth.instance.signOut();
         _firebaseConnected = false;
@@ -111,6 +132,7 @@ class AuthProvider with ChangeNotifier {
 
       await _storageService.clearSession();
       _currentUser = null;
+      _token = null;
       _status = AuthStatus.unauthenticated;
       notifyListeners();
     } catch (e) {
